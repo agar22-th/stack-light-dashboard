@@ -9,6 +9,8 @@ Transport — Modbus TCP communication
 Processing — Node-RED flows and dashboard
 Storage — InfluxDB time-series database + Excel/CSV export
 Visualization — Grafana Labs supervision dashboard + interactive HTML demo
+
+
 ┌─────────────────┐        Modbus TCP         ┌──────────────────┐
 │  Siemens S7-1500│  ────────── port 502 ────► │    Node-RED      │
 │  (TIA Portal)   │                            │  Flow + Dashboard│
@@ -21,6 +23,7 @@ Visualization — Grafana Labs supervision dashboard + interactive HTML demo
                                                  ▼
                                            Grafana Labs
                                         (Supervision 4.0)
+
 How It Works
 1 — PLC Side (TIA Portal)
 Three digital outputs drive the stack light LEDs:
