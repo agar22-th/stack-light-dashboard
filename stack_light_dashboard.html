@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stack Light · Supervision IIoT — Hajar Thamir</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --bg2: #111827;
+    --bg3: #1a2236;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #f0f4ff;
+    --muted: #8892a4;
+    --dim: #4a5568;
+    --red: #ff4d4d;
+    --red-glow: rgba(255,77,77,0.25);
+    --yellow: #fbbf24;
+    --yellow-glow: rgba(251,191,36,0.25);
+    --green: #10b981;
+    --green-glow: rgba(16,185,129,0.25);
+    --accent: #6366f1;
+    --accent-glow: rgba(99,102,241,0.2);
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-display: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(99,102,241,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99,102,241,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .header-left h1 {
+    font-family: var(--font-display);
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    line-height: 1.1;
+    margin-bottom: 6px;
+  }
+
+  .header-left h1 span { color: var(--accent); }
+
+  .header-sub {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+
+  .badge-live {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--green);
+    background: rgba(16,185,129,0.1);
+    border: 1px solid rgba(16,185,129,0.25);
+    border-radius: 20px;
+    padding: 4px 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .dot-live {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  .uptime { font-size: 11px; color: var(--dim); }
+
+  /* METRICS ROW */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+
+  .metric {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .metric::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.6;
+  }
+
+  .metric-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+  .metric-value { font-family: var(--font-display); font-size: 26px; font-weight: 800; color: var(--text); line-height: 1; }
+  .metric-unit { font-size: 10px; color: var(--dim); margin-top: 4px; }
+
+  /* MAIN GRID */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem;
+  }
+
+  .card-title {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title::before {
+    content: '';
+    display: inline-block;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* LEDs */
+  .leds-row {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 1.5rem 0 1rem;
+  }
+
+  .led-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+
+  .led-outer {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .led-inner {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .led-wrap.off .led-outer { border-color: var(--border2); }
+  .led-wrap.off .led-inner { background: var(--bg3); }
+
+  .led-wrap.on-red .led-outer { border-color: var(--red); background: var(--red-glow); }
+  .led-wrap.on-red .led-inner { background: var(--red); box-shadow: 0 0 20px var(--red), 0 0 40px var(--red-glow); }
+
+  .led-wrap.on-yellow .led-outer { border-color: var(--yellow); background: var(--yellow-glow); }
+  .led-wrap.on-yellow .led-inner { background: var(--yellow); box-shadow: 0 0 20px var(--yellow), 0 0 40px var(--yellow-glow); }
+
+  .led-wrap.on-green .led-outer { border-color: var(--green); background: var(--green-glow); }
+  .led-wrap.on-green .led-inner { background: var(--green); box-shadow: 0 0 20px var(--green), 0 0 40px var(--green-glow); }
+
+  .led-wrap:hover .led-outer { transform: scale(1.05); }
+  .led-wrap:active .led-outer { transform: scale(0.95); }
+
+  .led-name { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  .led-addr { font-size: 10px; color: var(--dim); }
+
+  /* DBW display */
+  .dbw-display {
+    text-align: center;
+    margin: 1rem 0 0.5rem;
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+
+  .dbw-sub { text-align: center; font-size: 10px; color: var(--dim); margin-bottom: 1rem; }
+
+  /* Control buttons */
+  .ctrl-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .ctrl-btn {
+    flex: 1;
+    min-width: 70px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border2);
+    background: var(--bg3);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    transition: all 0.15s ease;
+  }
+
+  .ctrl-btn:hover { border-color: var(--accent); color: var(--text); background: var(--accent-glow); }
+  .ctrl-btn.active-red { border-color: var(--red); color: var(--red); background: var(--red-glow); }
+  .ctrl-btn.active-yellow { border-color: var(--yellow); color: var(--yellow); background: var(--yellow-glow); }
+  .ctrl-btn.active-green { border-color: var(--green); color: var(--green); background: var(--green-glow); }
+
+  /* Modbus table */
+  .modbus-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .modbus-table tr { border-bottom: 1px solid var(--border); }
+  .modbus-table tr:last-child { border-bottom: none; }
+  .modbus-table td { padding: 8px 0; }
+  .modbus-table .key { color: var(--muted); }
+  .modbus-table .val { text-align: right; color: var(--text); font-weight: 500; }
+  .modbus-table .val.highlight { color: var(--accent); }
+
+  /* History */
+  .hist-list { display: flex; flex-direction: column; gap: 8px; }
+  .hist-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+  .hist-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .hist-time { color: var(--dim); min-width: 52px; }
+  .hist-event { color: var(--muted); flex: 1; }
+  .hist-word { color: var(--accent); font-weight: 500; margin-left: auto; }
+
+  /* Pipeline */
+  .pipe-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .pipe-node {
+    flex: 1;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    padding: 8px 4px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    min-width: 60px;
+  }
+
+  .pipe-node:first-child { border-radius: 8px 0 0 8px; }
+  .pipe-node:last-child { border-radius: 0 8px 8px 0; }
+  .pipe-node.active-pipe { background: var(--accent-glow); border-color: var(--accent); color: var(--text); }
+
+  /* Chart */
+  .chart-wrap { height: 120px; position: relative; }
+
+  /* Bottom grid */
+  .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* Footer */
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .footer-info { font-size: 11px; color: var(--dim); line-height: 1.6; }
+  .footer-info strong { color: var(--muted); }
+
+  .footer-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  @media (max-width: 700px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .main-grid, .bottom-grid { grid-template-columns: 1fr; }
+    .leds-row { gap: 1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="header-left">
+      <h1>Stack <span>Light</span> · Supervision IIoT</h1>
+      <p class="header-sub">S7-1500 · Modbus TCP · Node-RED · InfluxDB · Grafana</p>
+    </div>
+    <div class="header-right">
+      <div class="badge-live"><div class="dot-live"></div> Live</div>
+      <span class="uptime" id="uptime-display">00:00:00</span>
+    </div>
+  </header>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-label">DB1.DBW2</div>
+      <div class="metric-value" id="m-word">1</div>
+      <div class="metric-unit">registre Modbus</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Voyant actif</div>
+      <div class="metric-value" id="m-active" style="font-size:18px;padding-top:4px;">RED</div>
+      <div class="metric-unit">état courant</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Cycles</div>
+      <div class="metric-value" id="m-cycles">0</div>
+      <div class="metric-unit">changements d'état</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Uptime</div>
+      <div class="metric-value" id="m-uptime">0s</div>
+      <div class="metric-unit">depuis démarrage</div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <!-- LED Control -->
+    <div class="card">
+      <div class="card-title">Commande voyants · TIA Portal</div>
+      <div class="leds-row">
+        <div class="led-wrap on-red" id="led-red" onclick="setLed('red')">
+          <div class="led-outer"><div class="led-inner"></div></div>
+          <span class="led-name">Rouge</span>
+          <span class="led-addr">Q0.0</span>
+        </div>
+        <div class="led-wrap off" id="led-yellow" onclick="setLed('yellow')">
+          <div class="led-outer"><div class="led-inner"></div></div>
+          <span class="led-name">Jaune</span>
+          <span class="led-addr">Q0.1</span>
+        </div>
+        <div class="led-wrap off" id="led-green" onclick="setLed('green')">
+          <div class="led-outer"><div class="led-inner"></div></div>
+          <span class="led-name">Vert</span>
+          <span class="led-addr">Q0.2</span>
+        </div>
+      </div>
+      <div class="dbw-display" id="dbw-val">DB1.DBW2 = 1</div>
+      <div class="dbw-sub">Holding register · Modbus FC03/FC06</div>
+      <div class="ctrl-row">
+        <button class="ctrl-btn active-red" id="btn-red" onclick="setLed('red')">Rouge</button>
+        <button class="ctrl-btn" id="btn-yellow" onclick="setLed('yellow')">Jaune</button>
+        <button class="ctrl-btn" id="btn-green" onclick="setLed('green')">Vert</button>
+        <button class="ctrl-btn" onclick="setLed('off')">Off</button>
+      </div>
+    </div>
+
+    <!-- Modbus Registers -->
+    <div class="card">
+      <div class="card-title">Registres Modbus TCP · Port 502</div>
+      <table class="modbus-table">
+        <tr><td class="key">Protocole</td><td class="val highlight">Modbus TCP</td></tr>
+        <tr><td class="key">Port</td><td class="val">502</td></tr>
+        <tr><td class="key">Fonction lecture</td><td class="val">FC03</td></tr>
+        <tr><td class="key">Fonction écriture</td><td class="val">FC06</td></tr>
+        <tr><td class="key">Q0.0 · RED</td><td class="val" id="reg-red">1</td></tr>
+        <tr><td class="key">Q0.1 · YELLOW</td><td class="val" id="reg-yel">0</td></tr>
+        <tr><td class="key">Q0.2 · GREEN</td><td class="val" id="reg-grn">0</td></tr>
+        <tr><td class="key">DB1.DBW2 (hex)</td><td class="val highlight" id="reg-hex">0x0001</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="bottom-grid">
+    <!-- History -->
+    <div class="card">
+      <div class="card-title">Historique InfluxDB</div>
+      <div class="hist-list" id="history-list">
+        <div class="hist-row">
+          <div class="hist-dot" style="background:#ff4d4d;"></div>
+          <span class="hist-time">00:00:00</span>
+          <span class="hist-event">RED activé · Q0.0=1</span>
+          <span class="hist-word">W=1</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart + Pipeline -->
+    <div class="card">
+      <div class="card-title">Chaîne IIoT</div>
+      <div class="pipe-row">
+        <div class="pipe-node active-pipe">TIA Portal</div>
+        <div class="pipe-node">Modbus</div>
+        <div class="pipe-node">Node-RED</div>
+        <div class="pipe-node">InfluxDB</div>
+        <div class="pipe-node">Grafana</div>
+      </div>
+      <div class="card-title">DBW2 · Série temporelle</div>
+      <div class="chart-wrap">
+        <canvas id="chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-info">
+      <strong>Hajar Thamir</strong> · DBT-TISI 25-26<br>
+      Encadré par Pr. A. El Hamdaouy · Réseaux industriels &amp; supervision IIoT
+    </div>
+    <div class="footer-tags">
+      <span class="tag">#Industrie40</span>
+      <span class="tag">#IIoT</span>
+      <span class="tag">#Siemens</span>
+      <span class="tag">#NodeRED</span>
+      <span class="tag">#Grafana</span>
+      <span class="tag">#ModbusTCP</span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+let currentLed = 'red';
+let cycles = 0;
+let startTime = Date.now();
+let chartData = Array(20).fill(null);
+chartData[19] = 1;
+let chart;
+
+const colors = { red: '#ff4d4d', yellow: '#fbbf24', green: '#10b981', off: '#4a5568' };
+const words  = { red: 1, yellow: 2, green: 4, off: 0 };
+const hexes  = { red: '0x0001', yellow: '0x0002', green: '0x0004', off: '0x0000' };
+const names  = { red: 'RED', yellow: 'YELLOW', green: 'GREEN', off: 'OFF' };
+const btnCls = { red: 'active-red', yellow: 'active-yellow', green: 'active-green', off: '' };
+
+function setLed(led) {
+  if(led === currentLed && led !== 'off') return;
+  currentLed = led;
+  cycles++;
+
+  ['red','yellow','green'].forEach(c => {
+    const wrap = document.getElementById('led-' + c);
+    wrap.className = 'led-wrap ' + (led === c ? 'on-' + c : 'off');
+    const btn = document.getElementById('btn-' + c);
+    if(btn) btn.className = 'ctrl-btn' + (led === c ? ' ' + btnCls[c] : '');
+  });
+
+  const w = words[led];
+  document.getElementById('m-word').textContent = w;
+  document.getElementById('m-active').textContent = names[led];
+  document.getElementById('m-cycles').textContent = cycles;
+  document.getElementById('dbw-val').textContent = 'DB1.DBW2 = ' + w;
+  document.getElementById('reg-red').textContent = led === 'red' ? 1 : 0;
+  document.getElementById('reg-yel').textContent = led === 'yellow' ? 1 : 0;
+  document.getElementById('reg-grn').textContent = led === 'green' ? 1 : 0;
+  document.getElementById('reg-hex').textContent = hexes[led];
+
+  addHistory(led, w);
+  pushChart(w);
+}
+
+function addHistory(led, word) {
+  const elapsed = Math.round((Date.now() - startTime) / 1000);
+  const h = String(Math.floor(elapsed/3600)).padStart(2,'0');
+  const m = String(Math.floor((elapsed%3600)/60)).padStart(2,'0');
+  const s = String(elapsed%60).padStart(2,'0');
+  const list = document.getElementById('history-list');
+  const row = document.createElement('div');
+  row.className = 'hist-row';
+  row.innerHTML = `<div class="hist-dot" style="background:${colors[led]};"></div><span class="hist-time">${h}:${m}:${s}</span><span class="hist-event">${names[led]} activé · Q${led==='red'?'0.0':led==='yellow'?'0.1':'0.2'}=${led==='off'?0:1}</span><span class="hist-word">W=${word}</span>`;
+  list.insertBefore(row, list.firstChild);
+  if(list.children.length > 7) list.removeChild(list.lastChild);
+}
+
+function pushChart(val) {
+  chartData.shift();
+  chartData.push(val === 0 ? null : val);
+  if(chart) {
+    chart.data.datasets[0].data = [...chartData];
+    chart.update('none');
+  }
+}
+
+function initChart() {
+  const ctx = document.getElementById('chart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: Array(20).fill(''),
+      datasets: [{
+        data: [...chartData],
+        borderColor: '#6366f1',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#6366f1',
+        fill: false,
+        tension: 0.4,
+        spanGaps: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 200 },
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: {
+          min: 0, max: 5,
+          ticks: { stepSize: 1, font: { size: 10, family: "'JetBrains Mono'" }, color: '#4a5568' },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          border: { display: false }
+        }
+      }
+    }
+  });
+}
+
+setInterval(() => {
+  const elapsed = Math.round((Date.now() - startTime) / 1000);
+  const h = String(Math.floor(elapsed/3600)).padStart(2,'0');
+  const m = String(Math.floor((elapsed%3600)/60)).padStart(2,'0');
+  const s = String(elapsed%60).padStart(2,'0');
+  const t = h+':'+m+':'+s;
+  document.getElementById('uptime-display').textContent = t;
+  document.getElementById('m-uptime').textContent = elapsed + 's';
+}, 1000);
+
+initChart();
+</script>
+</body>
+</html>
