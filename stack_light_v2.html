@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stack Light · IIoT Dashboard v2 — Hajar Thamir</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --bg2: #111827;
+    --bg3: #1a2236;
+    --bg4: #0f172a;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #f0f4ff;
+    --muted: #8892a4;
+    --dim: #4a5568;
+    --red: #ff4d4d;
+    --red-bg: rgba(255,77,77,0.12);
+    --red-border: rgba(255,77,77,0.3);
+    --yellow: #fbbf24;
+    --yellow-bg: rgba(251,191,36,0.12);
+    --yellow-border: rgba(251,191,36,0.3);
+    --green: #10b981;
+    --green-bg: rgba(16,185,129,0.12);
+    --green-border: rgba(16,185,129,0.3);
+    --accent: #6366f1;
+    --accent-bg: rgba(99,102,241,0.12);
+    --accent-border: rgba(99,102,241,0.3);
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-display: 'Syne', sans-serif;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(99,102,241,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99,102,241,0.025) 1px, transparent 1px);
+    background-size: 44px 44px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 5rem;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 4vw, 2.1rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 6px;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .header-sub {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: default;
+  }
+
+  .badge-live {
+    background: var(--green-bg);
+    color: var(--green);
+    border: 1px solid var(--green-border);
+  }
+
+  .badge-auto {
+    background: var(--bg3);
+    color: var(--muted);
+    border: 1px solid var(--border2);
+    cursor: pointer;
+    transition: all .2s;
+    user-select: none;
+  }
+
+  .badge-auto.on {
+    background: var(--accent-bg);
+    color: var(--accent);
+    border-color: var(--accent-border);
+  }
+
+  .dot-pulse {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(0.65); }
+  }
+
+  .uptime-display { font-size: 11px; color: var(--dim); font-family: var(--font-mono); }
+
+  /* METRICS */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 10px;
+    margin-bottom: 1.25rem;
+  }
+
+  .metric {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .metric::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .metric.m-red::before { background: var(--red); }
+  .metric.m-yellow::before { background: var(--yellow); }
+  .metric.m-green::before { background: var(--green); }
+  .metric.m-accent::before { background: var(--accent); }
+
+  .mlabel { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 8px; }
+  .mval { font-family: var(--font-display); font-size: 26px; font-weight: 800; color: var(--text); line-height: 1; }
+  .munit { font-size: 10px; color: var(--dim); margin-top: 4px; }
+
+  /* LAYOUT */
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+  }
+
+  .card-title {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    margin-bottom: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .card-title::before {
+    content: '';
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  /* LEDs */
+  .leds-row {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 1rem 0 .75rem;
+  }
+
+  .led-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: transform .15s;
+  }
+
+  .led-wrap:hover { transform: scale(1.04); }
+  .led-wrap:active { transform: scale(.94); }
+
+  .led-outer {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--border2);
+    transition: all .3s ease;
+  }
+
+  .led-inner {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: var(--bg3);
+    transition: all .3s ease;
+  }
+
+  .led-wrap.on-red .led-outer { border-color: var(--red); background: var(--red-bg); }
+  .led-wrap.on-red .led-inner { background: var(--red); box-shadow: 0 0 22px var(--red), 0 0 44px var(--red-bg); }
+
+  .led-wrap.on-yellow .led-outer { border-color: var(--yellow); background: var(--yellow-bg); }
+  .led-wrap.on-yellow .led-inner { background: var(--yellow); box-shadow: 0 0 22px var(--yellow), 0 0 44px var(--yellow-bg); }
+
+  .led-wrap.on-green .led-outer { border-color: var(--green); background: var(--green-bg); }
+  .led-wrap.on-green .led-inner { background: var(--green); box-shadow: 0 0 22px var(--green), 0 0 44px var(--green-bg); }
+
+  .led-lbl { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .led-addr { font-size: 10px; color: var(--dim); }
+
+  .dbw-val {
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 800;
+    color: var(--text);
+    margin: .75rem 0 .3rem;
+  }
+
+  .dbw-sub { text-align: center; font-size: 10px; color: var(--dim); margin-bottom: .85rem; }
+
+  .ctrl-row { display: flex; gap: 6px; margin-bottom: .85rem; }
+
+  .cbtn {
+    flex: 1;
+    padding: 7px 4px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    transition: all .15s;
+  }
+
+  .cbtn:hover { background: var(--bg3); }
+  .cbtn.a-red { border-color: var(--red); color: var(--red); background: var(--red-bg); }
+  .cbtn.a-yellow { border-color: var(--yellow); color: var(--yellow); background: var(--yellow-bg); }
+  .cbtn.a-green { border-color: var(--green); color: var(--green); background: var(--green-bg); }
+
+  .speed-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .speed-row label { font-size: 10px; color: var(--dim); white-space: nowrap; }
+
+  input[type=range] {
+    flex: 1;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .speed-val { font-size: 11px; color: var(--muted); min-width: 22px; }
+
+  /* Modbus */
+  .mbtable { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .mbtable tr { border-bottom: 1px solid var(--border); }
+  .mbtable tr:last-child { border: none; }
+  .mbtable td { padding: 7px 0; }
+  .mbtable .k { color: var(--muted); }
+  .mbtable .v { text-align: right; font-weight: 500; color: var(--text); }
+  .mbtable .vi { color: var(--accent); }
+  .mbtable .vr { color: var(--red); }
+  .mbtable .vy { color: var(--yellow); }
+  .mbtable .vg { color: var(--green); }
+
+  /* Node-RED Flow */
+  .flow { display: flex; flex-direction: column; gap: 5px; }
+
+  .fnode {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    font-size: 11px;
+    transition: border-color .3s;
+  }
+
+  .fnode.active { border-color: var(--accent); }
+
+  .fnode-dot {
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .fnode-name { color: var(--text); font-weight: 500; min-width: 80px; }
+  .fnode-desc { color: var(--dim); font-size: 10px; }
+
+  .farrow { text-align: center; color: var(--dim); font-size: 11px; padding: 1px 0; }
+
+  .fout-row { display: flex; gap: 4px; }
+  .fout { flex: 1; display: flex; align-items: center; gap: 5px; padding: 5px 7px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg3); font-size: 10px; }
+  .fout-dot { width: 6px; height: 6px; border-radius: 2px; flex-shrink: 0; }
+  .fout-name { color: var(--muted); }
+
+  /* Grafana */
+  .grafana-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .gstat {
+    background: var(--bg3);
+    border-radius: var(--radius-sm);
+    padding: .75rem;
+    text-align: center;
+  }
+
+  .gstat-label { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; }
+  .gstat-val { font-family: var(--font-display); font-size: 22px; font-weight: 800; color: var(--text); }
+
+  .gauge-section { margin-bottom: 4px; }
+  .gauge-name { font-size: 10px; color: var(--dim); margin-bottom: 3px; }
+  .gauge-bar { height: 5px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .gauge-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+
+  /* History */
+  .hlist { display: flex; flex-direction: column; gap: 5px; }
+
+  .hrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    padding: 6px 9px;
+    border-radius: 7px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    animation: fadein .3s ease;
+  }
+
+  @keyframes fadein {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .hdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .htime { color: var(--dim); min-width: 52px; }
+  .hevent { color: var(--muted); flex: 1; }
+  .hword { color: var(--accent); font-weight: 500; }
+
+  /* Chart */
+  .chart-wrap { height: 100px; position: relative; margin-top: 10px; }
+
+  /* Footer */
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .footer-info { font-size: 11px; color: var(--dim); line-height: 1.8; }
+  .footer-info strong { color: var(--muted); }
+
+  .footer-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag {
+    font-size: 10px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+
+  @media (max-width: 720px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .row2, .row3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div>
+      <h1>Stack <span>Light</span> · IIoT</h1>
+      <p class="header-sub">S7-1500 · Modbus TCP · Node-RED · InfluxDB · Grafana</p>
+    </div>
+    <div class="header-right">
+      <div class="badges">
+        <span class="badge badge-live"><span class="dot-pulse"></span>Live</span>
+        <span class="badge badge-auto" id="auto-badge" onclick="toggleAuto()">⟳ Auto OFF</span>
+      </div>
+      <span class="uptime-display" id="uptime-display">00:00:00</span>
+    </div>
+  </header>
+
+  <div class="metrics">
+    <div class="metric m-red">
+      <div class="mlabel">DB1.DBW2</div>
+      <div class="mval" id="m-word">1</div>
+      <div class="munit">valeur registre</div>
+    </div>
+    <div class="metric m-yellow">
+      <div class="mlabel">Voyant actif</div>
+      <div class="mval" id="m-active" style="font-size:16px;padding-top:5px">RED</div>
+      <div class="munit">état courant</div>
+    </div>
+    <div class="metric m-green">
+      <div class="mlabel">Cycles</div>
+      <div class="mval" id="m-cycles">0</div>
+      <div class="munit">changements d'état</div>
+    </div>
+    <div class="metric m-accent">
+      <div class="mlabel">Uptime</div>
+      <div class="mval" id="m-uptime">0s</div>
+      <div class="munit">depuis démarrage</div>
+    </div>
+  </div>
+
+  <div class="row2">
+    <!-- LED Control -->
+    <div class="card">
+      <div class="card-title">Commande PLC · TIA Portal</div>
+      <div class="leds-row">
+        <div class="led-wrap on-red" id="led-red" onclick="setLed('red')">
+          <div class="led-outer"><div class="led-inner"></div></div>
+          <span class="led-lbl">Rouge</span>
+          <span class="led-addr">Q0.0</span>
+        </div>
+        <div class="led-wrap" id="led-yellow" onclick="setLed('yellow')">
+          <div class="led-outer"><div class="led-inner"></div></div>
+          <span class="led-lbl">Jaune</span>
+          <span class="led-addr">Q0.1</span>
+        </div>
+        <div class="led-wrap" id="led-green" onclick="setLed('green')">
+          <div class="led-outer"><div class="led-inner"></div></div>
+          <span class="led-lbl">Vert</span>
+          <span class="led-addr">Q0.2</span>
+        </div>
+      </div>
+      <div class="dbw-val" id="dbw-val">DB1.DBW2 = 1</div>
+      <div class="dbw-sub">Holding register · FC03 read / FC06 write</div>
+      <div class="ctrl-row">
+        <button class="cbtn a-red" id="btn-red" onclick="setLed('red')">Rouge</button>
+        <button class="cbtn" id="btn-yellow" onclick="setLed('yellow')">Jaune</button>
+        <button class="cbtn" id="btn-green" onclick="setLed('green')">Vert</button>
+        <button class="cbtn" onclick="setLed('off')">Off</button>
+      </div>
+      <div class="speed-row">
+        <label>Vitesse auto</label>
+        <input type="range" min="1" max="5" value="2" step="1" id="speed-slider" oninput="updateSpeed(this.value)">
+        <span class="speed-val" id="speed-val">2s</span>
+      </div>
+    </div>
+
+    <!-- Modbus -->
+    <div class="card">
+      <div class="card-title">Registres Modbus TCP · Port 502</div>
+      <table class="mbtable">
+        <tr><td class="k">Protocole</td><td class="v vi">Modbus TCP</td></tr>
+        <tr><td class="k">Port</td><td class="v">502</td></tr>
+        <tr><td class="k">Lecture</td><td class="v">FC03</td></tr>
+        <tr><td class="k">Écriture</td><td class="v">FC06</td></tr>
+        <tr><td class="k">Q0.0 · RED</td><td class="v vr" id="reg-red">1</td></tr>
+        <tr><td class="k">Q0.1 · YELLOW</td><td class="v vy" id="reg-yel">0</td></tr>
+        <tr><td class="k">Q0.2 · GREEN</td><td class="v vg" id="reg-grn">0</td></tr>
+        <tr><td class="k">DB1.DBW2 (hex)</td><td class="v vi" id="reg-hex">0x0001</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="row3">
+    <!-- Node-RED -->
+    <div class="card">
+      <div class="card-title">Node-RED · Flow</div>
+      <div class="flow">
+        <div class="fnode active" id="fn-inject">
+          <div class="fnode-dot" style="background:#6366f1"></div>
+          <span class="fnode-name">inject</span>
+          <span class="fnode-desc">déclencheur polling</span>
+        </div>
+        <div class="farrow">↓</div>
+        <div class="fnode" id="fn-modbus">
+          <div class="fnode-dot" style="background:#f59e0b"></div>
+          <span class="fnode-name">modbus-read</span>
+          <span class="fnode-desc">FC03 · reg 40001</span>
+        </div>
+        <div class="farrow">↓</div>
+        <div class="fnode" id="fn-func">
+          <div class="fnode-dot" style="background:#10b981"></div>
+          <span class="fnode-name">function</span>
+          <span class="fnode-desc" id="nr-decode">decode DBW2=1</span>
+        </div>
+        <div class="farrow">↓ ↓ ↓</div>
+        <div class="fout-row">
+          <div class="fout"><div class="fout-dot" style="background:#3b82f6"></div><span class="fout-name">dashboard</span></div>
+          <div class="fout"><div class="fout-dot" style="background:#8b5cf6"></div><span class="fout-name">influxdb</span></div>
+          <div class="fout"><div class="fout-dot" style="background:#06b6d4"></div><span class="fout-name">csv</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grafana -->
+    <div class="card">
+      <div class="card-title">Grafana Labs · Supervision</div>
+      <div class="grafana-stats">
+        <div class="gstat">
+          <div class="gstat-label">Gauge DBW2</div>
+          <div class="gstat-val" id="g-word">1</div>
+        </div>
+        <div class="gstat">
+          <div class="gstat-label">État LED</div>
+          <div class="gstat-val" id="g-led" style="font-size:15px">RED</div>
+        </div>
+      </div>
+      <div class="gauge-section">
+        <div class="gauge-name">RED · Q0.0</div>
+        <div class="gauge-bar"><div class="gauge-fill" id="g-red" style="width:100%;background:var(--red)"></div></div>
+      </div>
+      <div class="gauge-section">
+        <div class="gauge-name">YELLOW · Q0.1</div>
+        <div class="gauge-bar"><div class="gauge-fill" id="g-yel" style="width:0%;background:var(--yellow)"></div></div>
+      </div>
+      <div class="gauge-section">
+        <div class="gauge-name">GREEN · Q0.2</div>
+        <div class="gauge-bar"><div class="gauge-fill" id="g-grn" style="width:0%;background:var(--green)"></div></div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="chart"></canvas>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="card">
+      <div class="card-title">Historique · InfluxDB</div>
+      <div class="hlist" id="hlist">
+        <div class="hrow">
+          <div class="hdot" style="background:var(--red)"></div>
+          <span class="htime">00:00:00</span>
+          <span class="hevent">RED · Q0.0=1</span>
+          <span class="hword">W=1</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-info">
+      <strong>Hajar Thamir</strong> · DBT-TISI 25-26<br>
+      Encadré par Pr. A. El Hamdaouy · Réseaux industriels &amp; IIoT
+    </div>
+    <div class="footer-tags">
+      <span class="tag">#Industrie40</span>
+      <span class="tag">#IIoT</span>
+      <span class="tag">#Siemens</span>
+      <span class="tag">#NodeRED</span>
+      <span class="tag">#Grafana</span>
+      <span class="tag">#ModbusTCP</span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+let cur='red', cycles=0, t0=Date.now(), autoOn=false, autoTimer=null, autoSpeed=2000;
+const seq=['red','yellow','green']; let seqIdx=0;
+let chartData=Array(26).fill(null); chartData[25]=1;
+let chart;
+
+const C={red:'var(--red)',yellow:'var(--yellow)',green:'var(--green)',off:'var(--dim)'};
+const Chex={red:'#ff4d4d',yellow:'#fbbf24',green:'#10b981',off:'#4a5568'};
+const W={red:1,yellow:2,green:4,off:0};
+const H={red:'0x0001',yellow:'0x0002',green:'0x0004',off:'0x0000'};
+const N={red:'RED',yellow:'YELLOW',green:'GREEN',off:'OFF'};
+const BC={red:'a-red',yellow:'a-yellow',green:'a-green',off:''};
+const QN={red:'Q0.0',yellow:'Q0.1',green:'Q0.2',off:'---'};
+
+function setLed(led){
+  if(led===cur&&led!=='off') return;
+  cur=led; cycles++;
+  ['red','yellow','green'].forEach(c=>{
+    document.getElementById('led-'+c).className='led-wrap'+(led===c?' on-'+c:'');
+    const b=document.getElementById('btn-'+c);
+    if(b) b.className='cbtn'+(led===c?' '+BC[c]:'');
+  });
+  const w=W[led];
+  document.getElementById('m-word').textContent=w;
+  document.getElementById('m-active').textContent=N[led];
+  document.getElementById('m-cycles').textContent=cycles;
+  document.getElementById('dbw-val').textContent='DB1.DBW2 = '+w;
+  document.getElementById('reg-red').textContent=led==='red'?1:0;
+  document.getElementById('reg-yel').textContent=led==='yellow'?1:0;
+  document.getElementById('reg-grn').textContent=led==='green'?1:0;
+  document.getElementById('reg-hex').textContent=H[led];
+  document.getElementById('nr-decode').textContent='decode DBW2='+w;
+  document.getElementById('g-word').textContent=w;
+  document.getElementById('g-led').textContent=N[led];
+  document.getElementById('g-red').style.width=(led==='red'?100:0)+'%';
+  document.getElementById('g-yel').style.width=(led==='yellow'?100:0)+'%';
+  document.getElementById('g-grn').style.width=(led==='green'?100:0)+'%';
+  animateFlow(); addHist(led,w); pushChart(w);
+}
+
+function animateFlow(){
+  ['fn-inject','fn-modbus','fn-func'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    setTimeout(()=>{ el.classList.add('active'); setTimeout(()=>el.classList.remove('active'),400); }, i*180);
+  });
+}
+
+function addHist(led,word){
+  const e=Math.round((Date.now()-t0)/1000);
+  const hh=String(Math.floor(e/3600)).padStart(2,'0');
+  const mm=String(Math.floor((e%3600)/60)).padStart(2,'0');
+  const ss=String(e%60).padStart(2,'0');
+  const list=document.getElementById('hlist');
+  const r=document.createElement('div');
+  r.className='hrow';
+  r.innerHTML=`<div class="hdot" style="background:${Chex[led]||'#4a5568'}"></div><span class="htime">${hh}:${mm}:${ss}</span><span class="hevent">${N[led]} · ${QN[led]}=${led==='off'?0:1}</span><span class="hword">W=${word}</span>`;
+  list.insertBefore(r,list.firstChild);
+  if(list.children.length>8) list.removeChild(list.lastChild);
+}
+
+function pushChart(val){
+  chartData.shift(); chartData.push(val===0?null:val);
+  if(chart){chart.data.datasets[0].data=[...chartData];chart.update('none');}
+}
+
+function toggleAuto(){
+  autoOn=!autoOn;
+  const b=document.getElementById('auto-badge');
+  if(autoOn){ b.textContent='⟳ Auto ON'; b.classList.add('on'); runAuto(); }
+  else { b.textContent='⟳ Auto OFF'; b.classList.remove('on'); clearTimeout(autoTimer); }
+}
+
+function runAuto(){
+  if(!autoOn) return;
+  seqIdx=(seqIdx+1)%seq.length;
+  setLed(seq[seqIdx]);
+  autoTimer=setTimeout(runAuto,autoSpeed);
+}
+
+function updateSpeed(v){
+  autoSpeed=parseInt(v)*1000;
+  document.getElementById('speed-val').textContent=v+'s';
+  if(autoOn){ clearTimeout(autoTimer); runAuto(); }
+}
+
+setInterval(()=>{
+  const e=Math.round((Date.now()-t0)/1000);
+  const hh=String(Math.floor(e/3600)).padStart(2,'0');
+  const mm=String(Math.floor((e%3600)/60)).padStart(2,'0');
+  const ss=String(e%60).padStart(2,'0');
+  document.getElementById('uptime-display').textContent=hh+':'+mm+':'+ss;
+  document.getElementById('m-uptime').textContent=e+'s';
+},1000);
+
+(function initChart(){
+  chart=new Chart(document.getElementById('chart').getContext('2d'),{
+    type:'line',
+    data:{
+      labels:Array(26).fill(''),
+      datasets:[{data:[...chartData],borderColor:'#6366f1',borderWidth:2,pointRadius:2.5,pointBackgroundColor:'#6366f1',fill:false,tension:.4,spanGaps:false}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:{duration:250},
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{display:false},
+        y:{min:0,max:5,ticks:{stepSize:1,font:{size:9,family:"'JetBrains Mono'"},color:'#4a5568'},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false}}
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>
