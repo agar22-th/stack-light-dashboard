@@ -39,10 +39,10 @@ PLC (S7-1500) → Modbus TCP → Node-RED → InfluxDB → Grafana → Excel/CSV
 
 ## 📊 Live Demo
 
-🔗 https://agar22-th.github.io/stack-light-dashboard/
+## Live Links
 
-https://agar22-th.github.io/stack-light-dashboard/project2/
-
+- Main site: https://agar22-th.github.io/stack-light-dashboard/
+- Project 2: https://agar22-th.github.io/stack-light-dashboard/project2/
 ---
 
 ## 🎯 Objectives
